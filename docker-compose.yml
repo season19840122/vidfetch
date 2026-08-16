@@ -1,0 +1,16 @@
+services:
+  app:
+    build: .
+    container_name: vidfetch
+    ports:
+      - "3000:3000"
+    environment:
+      DATA_DIR: /data
+      MAX_CONCURRENT: "3"
+      DEFAULT_QUALITY: "1080p"
+      DEFAULT_FORMAT: "mp4"
+      TIMEOUT: "60000"
+      RETRY_COUNT: "3"
+    volumes:
+      - ./data:/data
+    restart: unless-stopped

@@ -1,0 +1,25 @@
+{
+  "name": "vidfetch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "VidFetch 在线视频下载管理器 —— 统一管理你的在线视频下载任务",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "npm --workspace server run dev",
+    "dev:client": "npm --workspace client run dev",
+    "build": "npm --workspace server run build && npm --workspace client run build",
+    "start": "npm --workspace server run start",
+    "typecheck": "npm --workspace server run typecheck && npm --workspace client run typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "playwright-core": "^1.62.1"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  }
+}
