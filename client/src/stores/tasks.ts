@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { api } from '@/api';
+import { api, API_BASE } from '@/api';
 import type { Task } from '@/types';
 
 const TERMINAL = ['completed', 'failed', 'cancelled'];
@@ -45,7 +45,7 @@ export const useTasksStore = defineStore('tasks', {
 
     connect() {
       if (typeof EventSource !== 'undefined') {
-        eventSource = new EventSource('/api/events');
+        eventSource = new EventSource(`${API_BASE}/events`);
         eventSource.onopen = () => {
           this.connected = true;
           void this.fetch();

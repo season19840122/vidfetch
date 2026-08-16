@@ -1,0 +1,18 @@
+# ===== Netlify 静态站点部署配置（仅前端 UI）=====
+# 注意：vidfetch 的下载后端（Fastify + yt-dlp + ffmpeg + SQLite）无法在 Netlify 静态托管上运行，
+# 本配置只发布 client/dist 前端。若需接入后端，构建时设置 VITE_API_BASE 指向后端地址。
+
+[build]
+  command = "npm ci && npm run build:client"
+  publish = "client/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+  # 接入后端时取消注释并填写你的后端地址
+  # VITE_API_BASE = "https://your-backend.example.com"
+
+# SPA 路由回退：所有路径都返回 index.html（前端使用 history 路由）
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

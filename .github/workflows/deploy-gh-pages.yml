@@ -1,0 +1,61 @@
+# ===== GitHub Pages 静态站点部署（仅前端 UI）=====
+# 推送 main 或手动触发时构建 client/dist 并发布到 GitHub Pages：
+# https://season19840122.github.io/vidfetch/
+#
+# 注意：vidfetch 的下载后端（Fastify + yt-dlp + ffmpeg + SQLite）无法在 GitHub Pages 上运行，
+# 此 workflow 只发布前端。接入后端：在仓库 Settings → Secrets and variables → Actions →
+# Variables 中新建 VITE_API_BASE = https://your-backend.example.com 后重新构建即可。
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build client (base=/vidfetch/ for project site)
+        run: npm --workspace client run build
+        env:
+          VITE_BASE: /vidfetch/
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+
+      # GitHub Pages 对未知路径返回 404 页，复制 index.html 作为 SPA 回退
+      - name: SPA fallback (404.html)
+        run: cp client/dist/index.html client/dist/404.html
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: client/dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

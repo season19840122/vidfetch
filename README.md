@@ -127,6 +127,26 @@ docker compose up -d
 
 访问 http://localhost:3000。下载文件持久化在宿主机的 `./data` 目录。
 
+## 静态站点部署（GitHub Pages / Netlify，仅前端 UI）
+
+> **重要说明**：本章只发布**前端 UI**。vidfetch 的下载后端（Fastify + SQLite + yt-dlp + ffmpeg）需要 Node ≥ 22 与常驻进程，无法在 GitHub Pages / Netlify 静态托管上运行。静态站点在前端会提示「无法连接到服务器」；接入后端后功能即可用（见下文）。
+
+### 部署地址
+
+- GitHub Pages：https://season19840122.github.io/vidfetch/（推送 `main` 自动部署，workflow 见 `.github/workflows/deploy-gh-pages.yml`）
+- Netlify：https://vidfetch.netlify.app/（`netlify.toml` 已配置构建与 SPA 回退）
+
+### 接入后端（可选）
+
+构建前端时指定后端地址，前端将请求 `<后端地址>/api`：
+
+```bash
+VITE_API_BASE=https://your-backend.example.com npm run build:client
+```
+
+- **GitHub Pages**：在仓库 Settings → Secrets and variables → Actions → **Variables** 新建 `VITE_API_BASE` 后重新构建。
+- **Netlify**：在 `netlify.toml` 的 `[build.environment]` 中取消注释 `VITE_API_BASE` 并填写地址。
+
 ## API 文档
 
 基础路径：`/api`。所有错误响应统一为 `{ "error": "错误码", "message": "中文提示" }`。

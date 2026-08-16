@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import type {
   AppSettings,
   DashboardStats,
@@ -7,7 +8,11 @@ import type {
   VideoInfo,
 } from '@/types';
 
-const BASE = '/api';
+/** API 基础路径：默认同源 `/api`；静态站点部署时可通过 `VITE_API_BASE` 指定后端地址（如 `https://api.example.com`） */
+export const API_BASE =
+  `${(import.meta.env.VITE_API_BASE as string | undefined) ?? ''}`.replace(/\/+$/, '') + '/api';
+
+const BASE = API_BASE;
 
 export class ApiError extends Error {
   code: string;
