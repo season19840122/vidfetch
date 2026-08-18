@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import Icon from '@/components/Icon.vue';
+import { api } from '@/api';
 import { useSettingsStore } from '@/stores/settings';
 import { useToastStore } from '@/stores/toast';
 import type { AppSettings } from '@/types';
@@ -8,6 +9,7 @@ import { formatBytes } from '@/utils/format';
 
 const settingsStore = useSettingsStore();
 const toastStore = useToastStore();
+const selectingDefaultDirectory = ref(false);
 
 const form = reactive({
   defaultQuality: '1080p',
@@ -56,6 +58,27 @@ onMounted(async () => {
   if (settingsStore.settings) applyToForm(settingsStore.settings);
   await settingsStore.loadSystem();
 });
+
+function selectTheme(theme: AppSettings['appearance.theme']) {
+  form.theme = theme;
+  settingsStore.previewTheme(theme);
+
+  // 设置尚未加载完成时也能立即预览；加载完成后由 App.vue 统一维护主题状态。
+  const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.classList.toggle('dark', theme === 'dark' || (theme === 'system' && systemDark));
+}
+
+async function chooseDefaultSaveDir() {
+  selectingDefaultDirectory.value = true;
+  try {
+    const { cancelled, dir } = await api.selectDirectory();
+    if (!cancelled) form.saveDir = dir;
+  } catch (e) {
+    toastStore.error(e instanceof Error ? e.message : '无法打开文件夹选择器');
+  } finally {
+    selectingDefaultDirectory.value = false;
+  }
+}
 
 async function save() {
   try {
@@ -146,7 +169,20 @@ const diskUsedPercent = () => {
         </div>
         <div>
           <label class="mb-1.5 block text-xs font-medium text-slate-500">默认保存目录</label>
-          <input v-model="form.saveDir" class="input" placeholder="/path/to/downloads" />
+          <div class="flex gap-2">
+            <input v-model="form.saveDir" class="input min-w-0 flex-1" placeholder="/path/to/downloads" />
+            <button
+              type="button"
+              class="btn-secondary shrink-0"
+              :disabled="selectingDefaultDirectory"
+              title="选择本地文件夹"
+              @click="chooseDefaultSaveDir"
+            >
+              <Icon v-if="selectingDefaultDirectory" name="spinner" :size="16" class="animate-spin" />
+              <Icon v-else name="folder" :size="16" />
+              {{ selectingDefaultDirectory ? '打开中…' : '浏览' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -192,7 +228,7 @@ const diskUsedPercent = () => {
               ? 'border-brand-600 bg-brand-50 text-brand-700 dark:border-brand-500 dark:bg-brand-500/10 dark:text-brand-300'
               : 'border-slate-200 text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300'
           "
-          @click="form.theme = o.id"
+          @click="selectTheme(o.id)"
         >
           <Icon :name="o.icon" :size="20" />
           {{ o.label }}

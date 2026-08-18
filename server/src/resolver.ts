@@ -7,6 +7,7 @@ import { cookiesArgs, hashString, mapYtDlpError, runYtDlp } from './ytdlp';
 
 const cache = new Map<string, { at: number; info: VideoInfo }>();
 const CACHE_TTL = 10 * 60 * 1000;
+const FALLBACK_AUDIO_BITRATE_KBPS = 128;
 
 export function getResolveCache(url: string): VideoInfo | undefined {
   const hit = cache.get(url);
@@ -76,6 +77,13 @@ function mapJsonToInfo(
   const formats: FormatInfo[] = [];
   const seen = new Set<string>();
   const rawFormats = Array.isArray(data.formats) ? (data.formats as Record<string, unknown>[]) : [];
+  // yt-dlp 的码率单位为 kbit/s。对于分离的音视频流，下载时会取最佳音频流合并，
+  // 因此视频预估大小需要将最佳音频码率一起计算。
+  const bestAudioBitrate = rawFormats.reduce((best, f) => {
+    const isAudio = String(f.vcodec ?? '') === 'none' && String(f.acodec ?? '') !== 'none';
+    if (!isAudio) return best;
+    return Math.max(best, getBitrateKbps(f));
+  }, 0);
 
   const pushFormat = (f: FormatInfo) => {
     const key = `${f.ext}:${f.resolution}`;
@@ -96,10 +104,15 @@ function mapJsonToInfo(
     const height = Number(f.height ?? 0) || 0;
     const noteRaw = String(f.format_note ?? '');
     const fps = Number(f.fps ?? 0) || 0;
-    const filesize = Number(f.filesize ?? f.filesize_approx ?? 0) || 0;
+    const exactSize = Number(f.filesize ?? 0) || 0;
+    const approximateSize = Number(f.filesize_approx ?? 0) || 0;
 
     const isAudio = vcodec === 'none' && acodec !== 'none';
     const resolution = isAudio ? 'audio' : height ? `${height}p` : noteRaw || 'video';
+    const filesize =
+      exactSize ||
+      approximateSize ||
+      estimateFilesize(duration, f, isAudio || acodec !== 'none' ? 0 : bestAudioBitrate);
 
     let note = noteRaw;
     const extras: string[] = [];
@@ -127,7 +140,8 @@ function mapJsonToInfo(
       resolution: 'audio',
       height: 0,
       note: '音频',
-      filesize: 0,
+      // 部分 HLS 清单不单独提供音频格式信息，按常见 AAC 码率给出参考值。
+      filesize: estimateFilesize(duration, { tbr: FALLBACK_AUDIO_BITRATE_KBPS }, 0),
       vcodec: 'none',
       acodec: 'aac',
     });
@@ -140,6 +154,27 @@ function mapJsonToInfo(
   });
 
   return { url, platform, title, thumbnail, author, duration, formats };
+}
+
+/** 读取 yt-dlp 格式对象中的码率（kbit/s）。 */
+function getBitrateKbps(format: Record<string, unknown>): number {
+  for (const key of ['tbr', 'vbr', 'abr']) {
+    const value = Number(format[key] ?? 0);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return 0;
+}
+
+/** 当平台没有提供大小时，按时长与码率计算下载大小的近似值。 */
+function estimateFilesize(
+  durationSeconds: number,
+  format: Record<string, unknown>,
+  additionalAudioKbps: number,
+): number {
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return 0;
+  const totalKbps = getBitrateKbps(format) + additionalAudioKbps;
+  if (totalKbps <= 0) return 0;
+  return Math.round((durationSeconds * totalKbps * 1000) / 8);
 }
 
 /* ---------------- 模拟解析 ---------------- */

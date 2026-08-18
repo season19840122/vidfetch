@@ -111,4 +111,5 @@ export const api = {
   updateSettings: (patch: Partial<AppSettings>) => request<AppSettings>('PUT', '/settings', patch),
   resetSettings: () => request<AppSettings>('POST', '/settings/reset'),
   system: () => request<SystemInfo>('GET', '/system'),
+  selectDirectory: () => request<{ cancelled: boolean; dir: string }>('POST', '/system/select-directory'),
 };

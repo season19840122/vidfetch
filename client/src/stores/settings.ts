@@ -34,6 +34,11 @@ export const useSettingsStore = defineStore('settings', {
         this.saving = false;
       }
     },
+    previewTheme(theme: AppSettings['appearance.theme']) {
+      if (!this.settings) return;
+      // 通过替换对象触发 App.vue 的主题监听；点击时立即预览，保存后再持久化。
+      this.settings = { ...this.settings, 'appearance.theme': theme };
+    },
     async reset() {
       this.settings = await api.resetSettings();
       return this.settings;

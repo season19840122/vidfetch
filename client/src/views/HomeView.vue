@@ -23,6 +23,7 @@ const resolveError = ref('');
 const selectedFormatId = ref('');
 const selectedExt = ref('');
 const saveDir = ref('');
+const selectingDirectory = ref(false);
 
 /** 按分辨率分组去重后的清晰度选项。 */
 const qualityOptions = computed(() => {
@@ -71,6 +72,18 @@ async function resolve() {
 function selectFormat(f: FormatInfo) {
   selectedFormatId.value = f.id;
   selectedExt.value = f.ext;
+}
+
+async function chooseSaveDir() {
+  selectingDirectory.value = true;
+  try {
+    const { cancelled, dir } = await api.selectDirectory();
+    if (!cancelled) saveDir.value = dir;
+  } catch (e) {
+    toastStore.error(e instanceof Error ? e.message : '无法打开文件夹选择器');
+  } finally {
+    selectingDirectory.value = false;
+  }
 }
 
 async function addToQueue() {
@@ -198,15 +211,28 @@ const platformMeta = computed(() => (video.value ? PLATFORM_META[video.value.pla
               "
               @click="selectFormat(f)"
             >
-              {{ f.resolution === 'audio' ? '仅音频' : f.resolution.toUpperCase() }} · {{ f.ext.toUpperCase() }}
-              <span v-if="f.filesize" class="ml-1 opacity-60">{{ formatBytes(f.filesize) }}</span>
+              <span>{{ f.resolution === 'audio' ? '仅音频' : f.resolution.toUpperCase() }} · {{ f.ext.toUpperCase() }}</span>
+              <span class="ml-1.5 opacity-70">约 {{ f.filesize ? formatBytes(f.filesize) : '未知' }}</span>
             </button>
           </div>
 
           <!-- 保存目录 -->
           <div class="mt-4">
             <label class="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">保存位置（可选）</label>
-            <input v-model="saveDir" class="input" placeholder="留空使用默认下载目录" />
+            <div class="flex gap-2">
+              <input v-model="saveDir" class="input min-w-0 flex-1" placeholder="留空使用默认下载目录" />
+              <button
+                type="button"
+                class="btn-secondary shrink-0"
+                :disabled="selectingDirectory"
+                title="选择本地文件夹"
+                @click="chooseSaveDir"
+              >
+                <Icon v-if="selectingDirectory" name="spinner" :size="16" class="animate-spin" />
+                <Icon v-else name="folder" :size="16" />
+                {{ selectingDirectory ? '打开中…' : '浏览' }}
+              </button>
+            </div>
           </div>
 
           <div class="mt-5 flex items-center justify-between gap-3">
@@ -215,7 +241,7 @@ const platformMeta = computed(() => (video.value ? PLATFORM_META[video.value.pla
               <span class="font-semibold text-slate-900 dark:text-white">
                 {{ selectedQuality === 'audio' ? '音频' : selectedQuality.toUpperCase() }}
                 · {{ selectedExt.toUpperCase() }}
-                <span v-if="selectedSize" class="text-slate-400"> · {{ formatBytes(selectedSize) }}</span>
+                <span class="text-slate-400"> · 约 {{ selectedSize ? formatBytes(selectedSize) : '未知' }}</span>
               </span>
             </div>
             <button class="btn-primary shrink-0" :disabled="adding" @click="addToQueue">

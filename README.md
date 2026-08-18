@@ -174,6 +174,7 @@ VITE_API_BASE=https://your-backend.example.com npm run build:client
 | PUT | `/api/settings` | 更新设置 |
 | POST | `/api/settings/reset` | 恢复默认设置 |
 | GET | `/api/system` | 系统状态（版本/数据库/磁盘/解析引擎） |
+| POST | `/api/system/select-directory` | 打开本机文件夹选择器，返回所选下载目录 |
 | GET | `/api/events` | SSE 实时事件流 |
 
 ### 错误码

@@ -17,6 +17,60 @@ function asPlatform(s: unknown): PlatformId | undefined {
   return typeof s === 'string' && ids.includes(s as PlatformId) ? (s as PlatformId) : undefined;
 }
 
+/**
+ * 调起运行服务的本机文件夹选择器。
+ * 浏览器无法直接读取本地路径，因此由本地 Node 服务完成这一交互。
+ */
+function selectDirectory(): Promise<string | null> {
+  const commands: Record<string, { command: string; args: string[] }> = {
+    darwin: {
+      command: 'osascript',
+      args: ['-e', 'POSIX path of (choose folder with prompt "请选择下载保存位置")'],
+    },
+    win32: {
+      command: 'powershell.exe',
+      args: [
+        '-NoProfile',
+        '-STA',
+        '-Command',
+        'Add-Type -AssemblyName System.Windows.Forms; $dialog = New-Object System.Windows.Forms.FolderBrowserDialog; $dialog.Description = "请选择下载保存位置"; if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { [Console]::Out.Write($dialog.SelectedPath) }',
+      ],
+    },
+    linux: {
+      command: 'zenity',
+      args: ['--file-selection', '--directory', '--title=请选择下载保存位置'],
+    },
+  };
+  const picker = commands[process.platform];
+  if (!picker) {
+    return Promise.reject(new AppError(ErrorCodes.INTERNAL, '当前系统不支持选择本地文件夹', 501));
+  }
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(picker.command, picker.args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
+    child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
+    child.once('error', () => {
+      const installHint = process.platform === 'linux' ? '，请安装 zenity 后重试' : '';
+      reject(new AppError(ErrorCodes.INTERNAL, `无法打开本地文件夹选择器${installHint}`, 500));
+    });
+    child.once('close', (code) => {
+      const dir = stdout.trim();
+      if (code === 0 && dir) {
+        resolve(dir);
+        return;
+      }
+      if (!dir) {
+        resolve(null);
+        return;
+      }
+      reject(new AppError(ErrorCodes.INTERNAL, stderr.trim() || '无法选择本地文件夹', 500));
+    });
+  });
+}
+
 export function registerRoutes(app: FastifyInstance): void {
   app.setErrorHandler((err, req, reply) => {
     if (err instanceof AppError) {
@@ -47,6 +101,11 @@ export function registerRoutes(app: FastifyInstance): void {
 
   app.get('/api/platforms', async () => {
     return PLATFORMS.map((p) => ({ id: p.id, name: p.name, color: p.color }));
+  });
+
+  app.post('/api/system/select-directory', async () => {
+    const dir = await selectDirectory();
+    return { cancelled: !dir, dir: dir ?? '' };
   });
 
   /* ---------------- 解析 ---------------- */
