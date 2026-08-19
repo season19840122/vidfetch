@@ -8,6 +8,7 @@ export type PlatformId =
   | 'vimeo'
   | 'x'
   | 'tiktok'
+  | 'douyin'
   | 'instagram'
   | 'other';
 

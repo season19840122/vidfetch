@@ -1,6 +1,6 @@
 // API 冒烟测试：覆盖健康检查、平台、解析、任务 CRUD、控制、历史、统计、设置、系统。
 // 用法：node scripts/smoke-test.mjs [BASE_URL]
-const BASE = process.argv[2] || 'http://localhost:3000';
+const BASE = process.argv[2] || 'http://localhost:45392';
 
 let pass = 0;
 let fail = 0;
@@ -72,27 +72,52 @@ async function main() {
   }
   check('任务最终完成', task.status === 'completed', `status=${task.status} err=${task.errorMessage}`);
 
-  // 9. 历史记录
+  // 9. 仅音频：确认音频格式能独立入队并生成对应扩展名的文件
+  const audio = video.formats.find((f) => f.resolution === 'audio');
+  check('解析结果含仅音频格式', !!audio, '未返回音频格式');
+  let audioTask;
+  if (audio) {
+    const audioCreate = await api('POST', '/api/tasks', {
+      url: 'https://www.youtube.com/watch?v=smoke-audio',
+      formatId: audio.id,
+      ext: audio.ext,
+      resolution: audio.resolution,
+      quality: 'audio',
+    });
+    check('创建仅音频任务', audioCreate.status === 200 && audioCreate.data?.id);
+    const audioTaskId = audioCreate.data?.id;
+    audioTask = audioCreate.data;
+    const audioStart = Date.now();
+    while (audioTaskId && !['completed', 'failed', 'cancelled'].includes(audioTask.status) && Date.now() - audioStart < 60000) {
+      await new Promise((r) => setTimeout(r, 300));
+      audioTask = (await api('GET', `/api/tasks/${audioTaskId}`)).data;
+    }
+    check('仅音频任务完成', audioTask?.status === 'completed', `status=${audioTask?.status} err=${audioTask?.errorMessage}`);
+    check('仅音频文件格式正确', audioTask?.filePath?.endsWith(`.${audio.ext}`), audioTask?.filePath ?? '');
+    if (audioTaskId) await api('DELETE', `/api/history/${audioTaskId}`);
+  }
+
+  // 10. 历史记录
   const history = await api('GET', '/api/history');
   check('历史记录含完成任务', history.status === 200 && history.data.some((t) => t.id === taskId));
 
-  // 10. 统计
+  // 11. 统计
   const stats = await api('GET', '/api/stats');
   check('统计接口', stats.status === 200 && typeof stats.data?.totals?.tasks === 'number' && stats.data.totals.tasks >= 1);
   check('统计成功率', typeof stats.data?.successRate === 'number');
 
-  // 11. 设置读写
+  // 12. 设置读写
   const settings = await api('GET', '/api/settings');
   check('读取设置', settings.status === 200 && settings.data?.['download.maxConcurrent'] > 0);
   const upd = await api('PUT', '/api/settings', { 'download.maxConcurrent': 5 });
   check('更新设置', upd.status === 200 && upd.data?.['download.maxConcurrent'] === 5);
   await api('PUT', '/api/settings', { 'download.maxConcurrent': 3 });
 
-  // 12. 系统信息
+  // 13. 系统信息
   const sys = await api('GET', '/api/system');
   check('系统信息', sys.status === 200 && sys.data?.version && sys.data?.database?.connected === true);
 
-  // 13. 文件管理（完成的任务有文件）
+  // 14. 文件管理（完成的任务有文件）
   if (task.filePath) {
     const open = await api('POST', `/api/tasks/${taskId}/open`);
     check('打开文件夹', open.status === 200 && open.data?.ok === true);
@@ -100,7 +125,7 @@ async function main() {
     check('删除文件', del.status === 200 && del.data?.ok === true && del.data?.task?.filePath === '');
   }
 
-  // 14. 删除历史（不删文件）
+  // 15. 删除历史（不删文件）
   const delHist = await api('DELETE', `/api/history/${taskId}`);
   check('删除历史记录', delHist.status === 200 && delHist.data?.ok === true);
 

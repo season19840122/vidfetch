@@ -258,6 +258,7 @@ class TaskQueue {
           platform: t.platform,
           taskId: t.id,
           title: t.title,
+          formatId: t.formatId,
           quality: t.quality,
           ext: t.formatExt || 'mp4',
           outputDir: t.saveDir,
@@ -316,10 +317,12 @@ class TaskQueue {
   private onProgress(id: string, p: { percent: number; speed: number; eta: number; downloaded: number; total: number }): void {
     const t = getTask(id);
     if (!t) return;
-    t.progress = p.percent;
+    // yt-dlp 在续传、切换分段或重算总大小时可能短暂回报更小的进度。
+    // 同一下载会话中的进度应只前进；用户主动“重试”会在 retry() 中显式归零。
+    t.progress = Math.max(t.progress, Math.max(0, Math.min(100, p.percent)));
     t.speed = p.speed;
     t.eta = p.eta;
-    t.downloadedBytes = p.downloaded;
+    t.downloadedBytes = Math.max(t.downloadedBytes, p.downloaded);
     if (p.total > 0) t.totalBytes = p.total;
     t.updatedAt = Date.now();
 

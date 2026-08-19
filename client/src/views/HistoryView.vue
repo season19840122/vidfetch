@@ -10,6 +10,7 @@ import { useTasksStore } from '@/stores/tasks';
 import { useToastStore } from '@/stores/toast';
 import type { PlatformId, TaskStatus } from '@/types';
 import { formatBytes, formatDateTime, PLATFORM_META } from '@/utils/format';
+import { thumbnailSrc } from '@/utils/thumbnail';
 
 const tasksStore = useTasksStore();
 const toastStore = useToastStore();
@@ -60,6 +61,15 @@ async function openFolder(id: string) {
     await api.openFolder(id);
   } catch (e) {
     toastStore.error(e instanceof Error ? e.message : '打开失败');
+  }
+}
+
+async function retry(id: string) {
+  try {
+    await tasksStore.retry(id);
+    toastStore.success('已按上次选择重新加入下载队列');
+  } catch (e) {
+    toastStore.error(e instanceof Error ? e.message : '重试失败');
   }
 }
 
@@ -135,10 +145,16 @@ async function clearAll() {
               <td class="px-4 py-3">
                 <div class="flex items-center gap-3">
                   <div class="h-10 w-16 shrink-0 overflow-hidden rounded-md bg-slate-100 dark:bg-slate-800">
-                    <img v-if="t.thumbnail" :src="t.thumbnail" class="h-full w-full object-cover" @error="($event.target as HTMLImageElement).style.display='none'" />
+                    <img v-if="t.thumbnail" :src="thumbnailSrc(t.thumbnail, t.platform)" class="h-full w-full object-cover" @error="($event.target as HTMLImageElement).style.display='none'" />
                   </div>
                   <div class="max-w-[180px]">
-                    <p class="truncate font-medium text-slate-800 dark:text-slate-100" :title="t.title">{{ t.title || '未命名' }}</p>
+                    <a
+                      class="block truncate font-medium text-slate-800 hover:text-brand-600 hover:underline dark:text-slate-100 dark:hover:text-brand-300"
+                      :href="t.url"
+                      :title="t.title || t.url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >{{ t.title || '未命名' }}</a>
                     <p class="truncate text-xs text-slate-400">{{ t.author }}</p>
                   </div>
                 </div>
@@ -152,6 +168,14 @@ async function clearAll() {
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center justify-end gap-1">
+                  <button
+                    v-if="t.status === 'failed' || t.status === 'cancelled'"
+                    class="rounded-lg p-1.5 text-slate-400 hover:bg-brand-50 hover:text-brand-600 dark:hover:bg-brand-500/10 dark:hover:text-brand-300"
+                    title="按上次选择重试"
+                    @click="retry(t.id)"
+                  >
+                    <Icon name="refresh" :size="16" />
+                  </button>
                   <button
                     v-if="t.filePath"
                     class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"

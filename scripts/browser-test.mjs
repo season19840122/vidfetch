@@ -2,7 +2,7 @@
 // 用法：node scripts/browser-test.mjs [BASE_URL]
 import { chromium } from 'playwright-core';
 
-const BASE = process.argv[2] || 'http://localhost:3000';
+const BASE = process.argv[2] || 'http://localhost:45392';
 const CHROME =
   process.env.CHROME_PATH ||
   process.env.HOME +
@@ -86,6 +86,19 @@ async function main() {
     await page.goto(BASE + '/history', { waitUntil: 'networkidle' });
     await sleep(500);
     check('历史页加载', (await page.locator('body').textContent())?.includes('下载历史') === true, '');
+    const sourceLink = page.locator('a[href*="youtube.com/watch?v=browsertest1"]').first();
+    await sourceLink.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
+    check('历史标题含源链接', (await sourceLink.count()) === 1, '未找到源链接标题');
+    if (await sourceLink.count()) {
+      check('源链接新标签打开', (await sourceLink.getAttribute('target')) === '_blank');
+      const [sourcePage] = await Promise.all([
+        ctx.waitForEvent('page'),
+        sourceLink.click(),
+      ]);
+      await sourcePage.waitForLoadState('domcontentloaded').catch(() => {});
+      check('点击标题跳转源地址', sourcePage.url().includes('youtube.com/watch?v=browsertest1'), sourcePage.url());
+      await sourcePage.close();
+    }
 
     // 9. 设置页 + 深色模式
     await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });

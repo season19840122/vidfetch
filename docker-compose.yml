@@ -3,7 +3,7 @@ services:
     build: .
     container_name: vidfetch
     ports:
-      - "3000:3000"
+      - "45392:45392"
     environment:
       DATA_DIR: /data
       MAX_CONCURRENT: "3"

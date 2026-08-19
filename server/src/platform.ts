@@ -39,6 +39,12 @@ export const PLATFORMS: PlatformMeta[] = [
     hosts: ['tiktok.com', 'vm.tiktok.com', 'vt.tiktok.com'],
   },
   {
+    id: 'douyin',
+    name: '抖音',
+    color: '#161823',
+    hosts: ['douyin.com', 'iesdouyin.com'],
+  },
+  {
     id: 'instagram',
     name: 'Instagram',
     color: '#E1306C',
@@ -62,6 +68,20 @@ export function normalizeUrl(raw: string): string {
   let s = raw.trim();
   if (!s) return s;
   if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
+  try {
+    const url = new URL(s);
+    // 抖音“精选”页的 modal_id 就是视频 ID，但该页面 URL 并非 yt-dlp 支持的
+    // 视频链接形式。转换为标准视频页后可正常解析与下载。
+    if (
+      /(^|\.)douyin\.com$/i.test(url.hostname) &&
+      url.pathname === '/jingxuan' &&
+      /^\d+$/.test(url.searchParams.get('modal_id') ?? '')
+    ) {
+      return `https://www.douyin.com/video/${url.searchParams.get('modal_id')}`;
+    }
+  } catch {
+    // URL 格式校验由 validateUrl 统一返回用户可读错误。
+  }
   return s;
 }
 

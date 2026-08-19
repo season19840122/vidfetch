@@ -8,6 +8,7 @@ import { useTasksStore } from '@/stores/tasks';
 import { useToastStore } from '@/stores/toast';
 import type { FormatInfo, VideoInfo } from '@/types';
 import { formatBytes, formatDuration, PLATFORM_META } from '@/utils/format';
+import { thumbnailSrc } from '@/utils/thumbnail';
 
 const router = useRouter();
 const tasksStore = useTasksStore();
@@ -168,7 +169,7 @@ const platformMeta = computed(() => (video.value ? PLATFORM_META[video.value.pla
       </p>
 
       <p class="mt-3 text-center text-xs text-slate-400">
-        支持 YouTube · Bilibili · Vimeo · X · TikTok · Instagram，以及更多 yt-dlp 支持的网站（仅限公开且你有权下载的内容）
+        支持 YouTube · Bilibili · 抖音 · TikTok · Vimeo · X · Instagram，以及更多 yt-dlp 支持的网站（仅限公开且你有权下载的内容）
       </p>
     </div>
 
@@ -178,7 +179,7 @@ const platformMeta = computed(() => (video.value ? PLATFORM_META[video.value.pla
         <div class="relative aspect-video w-full shrink-0 overflow-hidden bg-slate-100 dark:bg-slate-800 sm:aspect-auto sm:h-44 sm:w-72">
           <img
             v-if="video.thumbnail"
-            :src="video.thumbnail"
+            :src="thumbnailSrc(video.thumbnail, video.platform)"
             :alt="video.title"
             class="h-full w-full object-cover"
             @error="($event.target as HTMLImageElement).style.display = 'none'"

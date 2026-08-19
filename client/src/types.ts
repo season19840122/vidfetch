@@ -1,4 +1,4 @@
-export type PlatformId = 'youtube' | 'bilibili' | 'vimeo' | 'x' | 'tiktok' | 'instagram' | 'other';
+export type PlatformId = 'youtube' | 'bilibili' | 'vimeo' | 'x' | 'tiktok' | 'douyin' | 'instagram' | 'other';
 
 export type TaskStatus =
   | 'waiting'

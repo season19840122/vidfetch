@@ -9,6 +9,7 @@ import { useTasksStore } from '@/stores/tasks';
 import { useToastStore } from '@/stores/toast';
 import type { Task } from '@/types';
 import { formatBytes, formatDateTime, formatEta, formatSpeed } from '@/utils/format';
+import { thumbnailSrc } from '@/utils/thumbnail';
 
 const props = defineProps<{ task: Task }>();
 
@@ -98,7 +99,7 @@ function onAction(key: string) {
       <div class="relative hidden h-16 w-28 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800 sm:block">
         <img
           v-if="!thumbFailed && task.thumbnail"
-          :src="task.thumbnail"
+          :src="thumbnailSrc(task.thumbnail, task.platform)"
           :alt="task.title"
           class="h-full w-full object-cover"
           @error="thumbFailed = true"

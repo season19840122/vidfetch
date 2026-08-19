@@ -141,9 +141,18 @@ export function mapYtDlpError(stderr: string, platform: string): AppError {
  * 根据质量与容器格式构建 yt-dlp 的 -f 选择器。
  * 优先下载分离的 bestvideo+bestaudio 再用 ffmpeg 合并，保证音画最佳。
  */
-export function buildFormatSelector(quality: string, ext: string): string {
+export function buildFormatSelector(quality: string, ext: string, formatId = ''): string {
   if (quality === 'audio' || ext === 'm4a') {
-    return ext === 'm4a' ? 'bestaudio[ext=m4a]/bestaudio' : 'bestaudio/best';
+    // 音频格式由解析结果提供时，优先使用用户实际选中的 format_id。
+    // 之前这里始终重新选择 bestaudio；部分站点的通用 bestaudio 选择器会落到
+    // 不兼容的流，导致「仅音频」任务失败或下载成与界面不一致的格式。
+    const selected = formatId.trim();
+    if (selected && selected !== 'audio' && selected !== 'bestaudio') {
+      return `${selected}/bestaudio[ext=m4a]/bestaudio`;
+    }
+    // `bestaudio` 是解析层在未发现独立音频流时创建的兜底格式。
+    // 此时放宽到 best，使下载器可以从带音轨的视频流提取音频。
+    return 'bestaudio/best';
   }
   const height =
     quality === 'best' ? null : parseInt(quality.replace(/\D/g, ''), 10) || null;

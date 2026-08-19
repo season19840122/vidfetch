@@ -68,7 +68,7 @@ function mapJsonToInfo(
   platform: PlatformId,
 ): VideoInfo {
   const title = String(data.title ?? data.fulltitle ?? '未命名视频');
-  const thumbnail = String(data.thumbnail ?? '');
+  const thumbnail = normalizeThumbnailUrl(data.thumbnail);
   const author = String(
     data.uploader ?? data.channel ?? data.creator ?? data.uploader_id ?? getPlatformMeta(platform).name,
   );
@@ -154,6 +154,18 @@ function mapJsonToInfo(
   });
 
   return { url, platform, title, thumbnail, author, duration, formats };
+}
+
+/**
+ * yt-dlp 对哔哩哔哩常返回 http 的 hdslb CDN 地址。
+ * 页面通过 HTTPS 部署时，浏览器会拦截该混合内容，因此在服务端统一升级为 HTTPS。
+ */
+function normalizeThumbnailUrl(value: unknown): string {
+  const url = String(value ?? '').trim();
+  if (!url) return '';
+  if (url.startsWith('//')) return `https:${url}`;
+  if (/^http:\/\/i\d+\.hdslb\.com\//i.test(url)) return url.replace(/^http:/i, 'https:');
+  return url;
 }
 
 /** 读取 yt-dlp 格式对象中的码率（kbit/s）。 */

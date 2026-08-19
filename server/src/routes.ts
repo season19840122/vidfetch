@@ -103,6 +103,37 @@ export function registerRoutes(app: FastifyInstance): void {
     return PLATFORMS.map((p) => ({ id: p.id, name: p.name, color: p.color }));
   });
 
+  // 哔哩哔哩图片 CDN 会校验 Referer，浏览器从本地应用直接加载会得到 403。
+  // 仅代理其公开封面域名，避免该接口成为任意 URL 的转发入口。
+  app.get<{ Querystring: { url?: string } }>('/api/thumbnail', async (req, reply) => {
+    const rawUrl = req.query.url;
+    let url: URL;
+    try {
+      url = new URL(rawUrl ?? '');
+    } catch {
+      throw new AppError(ErrorCodes.INVALID_URL, '封面地址无效', 400);
+    }
+    if (url.protocol !== 'https:' || !/^i\d+\.hdslb\.com$/i.test(url.hostname)) {
+      throw new AppError(ErrorCodes.INVALID_URL, '不支持的封面地址', 400);
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        Referer: 'https://www.bilibili.com/',
+        'User-Agent': 'Mozilla/5.0 (compatible; VidFetch/1.0)',
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+    const contentType = response.headers.get('content-type') ?? '';
+    if (!response.ok || !contentType.startsWith('image/')) {
+      throw new AppError(ErrorCodes.NETWORK_ERROR, '无法获取视频封面', 502);
+    }
+    reply
+      .header('Content-Type', contentType)
+      .header('Cache-Control', 'public, max-age=86400')
+      .send(Buffer.from(await response.arrayBuffer()));
+  });
+
   app.post('/api/system/select-directory', async () => {
     const dir = await selectDirectory();
     return { cancelled: !dir, dir: dir ?? '' };

@@ -20,7 +20,7 @@ RUN apk add --no-cache ffmpeg python3 py3-pip && \
 WORKDIR /app
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
-    PORT=3000 \
+    PORT=45392 \
     DATA_DIR=/data
 
 # 仅安装生产依赖
@@ -34,6 +34,6 @@ COPY --from=build /app/server/dist ./server/dist
 COPY --from=build /app/client/dist ./client/dist
 
 VOLUME ["/data"]
-EXPOSE 3000
+EXPOSE 45392
 
 CMD ["node", "server/dist/index.js"]

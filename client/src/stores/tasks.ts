@@ -32,7 +32,19 @@ export const useTasksStore = defineStore('tasks', {
     },
     upsert(task: Task) {
       const i = this.tasks.findIndex((t) => t.id === task.id);
-      if (i >= 0) this.tasks[i] = task;
+      if (i >= 0) {
+        const previous = this.tasks[i];
+        const active = ['waiting', 'parsing', 'downloading', 'paused'];
+        // 防御迟到的 SSE / 轮询响应覆盖更新的进度，造成进度条视觉回退。
+        if (active.includes(previous.status) && active.includes(task.status)) {
+          task = {
+            ...task,
+            progress: Math.max(previous.progress, task.progress),
+            downloadedBytes: Math.max(previous.downloadedBytes, task.downloadedBytes),
+          };
+        }
+        this.tasks[i] = task;
+      }
       else this.tasks.unshift(task);
     },
     replace(list: Task[]) {

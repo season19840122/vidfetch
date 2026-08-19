@@ -68,7 +68,12 @@ function findYtDlp(): string | null {
 }
 
 export function loadConfig(): Config {
-  const simulate = str(process.env.SIMULATE, 'auto') as Config['simulate'];
+  const simulateRaw = str(process.env.SIMULATE, 'auto').trim().toLowerCase();
+  const simulate: Config['simulate'] = ['1', 'true', 'yes', 'on'].includes(simulateRaw)
+    ? 'on'
+    : ['0', 'false', 'no', 'off'].includes(simulateRaw)
+      ? 'off'
+      : 'auto';
 
   const version = (() => {
     try {
@@ -83,7 +88,7 @@ export function loadConfig(): Config {
   })();
 
   return {
-    port: int(process.env.PORT, 3000),
+    port: int(process.env.PORT, 45392),
     host: str(process.env.HOST, '0.0.0.0'),
     dataDir: DATA_DIR,
     dbPath: str(process.env.DB_PATH, '').trim()

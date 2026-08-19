@@ -6,14 +6,15 @@
 
 ## 功能特性
 
-- **多平台解析**：YouTube、Bilibili、Vimeo、X、TikTok、Instagram 六大重点平台，以及**任意 yt-dlp 支持的上千个网站**（自动归入「其他网站」通用解析）
-- **元信息预览**：标题、缩略图、平台、时长、作者、可用分辨率与格式、文件大小
+- **多平台解析**：YouTube、Bilibili、抖音、TikTok、Vimeo、X、Instagram 等重点平台，以及**任意 yt-dlp 支持的上千个网站**（自动归入「其他网站」通用解析）；抖音“精选页”链接会自动转换为标准视频链接
+- **元信息预览**：标题、缩略图、平台、时长、作者、可用分辨率与格式、文件大小；哔哩哔哩封面通过本地安全代理加载，避免 CDN 防盗链导致空白
 - **下载任务队列**：并发限制（1/2/3/5/10）、多任务、状态持久化
 - **任务状态机**：Waiting / Parsing / Downloading / Paused / Completed / Failed / Cancelled
-- **实时进度**：百分比、速度、剩余时间（SSE 实时推送）
-- **任务控制**：暂停 / 继续 / 取消 / 重试 / 删除（记录与文件明确区分）
+- **实时进度**：百分比、速度、剩余时间（SSE 实时推送）；续传和分段下载时进度只增不减，避免视觉回退
+- **任务控制**：暂停 / 继续 / 取消 / 重试 / 删除（记录与文件明确区分）；失败或已取消的历史记录均可按上一次的格式和保存位置重试
 - **任务恢复**：服务重启后自动恢复中断的任务（`--continue` 断点续传）
-- **下载历史**：搜索、平台/状态筛选、时间排序、清空
+- **下载历史**：搜索、平台/状态筛选、时间排序、清空；视频标题可跳转至源链接
+- **音频下载**：优先使用所选音频格式；当平台没有独立音频流时，自动从可用视频流提取 M4A（需要 ffmpeg）
 - **Dashboard**：今日/累计统计、成功率、各平台分布、每日下载量（图表）
 - **设置**：默认质量/格式、并发数、保存目录、限速、超时、重试、主题（浅色/深色/跟随系统）
 - **响应式**：桌面 / 平板 / 手机自适应
@@ -74,12 +75,12 @@ npm install
 ## 开发环境启动
 
 ```bash
-# 同时启动后端(3000)与前端(5173，代理到 3000)
+# 同时启动后端(45392)与前端(45391，代理到 45392)
 npm run dev
 ```
 
-- 前端：http://localhost:5173
-- 后端：http://localhost:3000
+- 前端：http://localhost:45391
+- 后端：http://localhost:45392
 
 也可以分开启动：
 
@@ -95,7 +96,7 @@ npm run build    # 构建后端(server/dist) + 前端(client/dist)
 npm start        # 后端托管前端静态资源，单端口访问
 ```
 
-访问 http://localhost:3000。
+访问 http://localhost:45392。
 
 ## 环境变量配置
 
@@ -103,7 +104,7 @@ npm start        # 后端托管前端静态资源，单端口访问
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
-| `PORT` | `3000` | 后端端口 |
+| `PORT` | `45392` | 后端端口 |
 | `HOST` | `0.0.0.0` | 监听地址 |
 | `DATA_DIR` | `./data` | 数据目录（数据库 + 下载文件） |
 | `DB_PATH` | 空 | 数据库路径（默认 `DATA_DIR/app.db`） |
@@ -125,7 +126,7 @@ npm start        # 后端托管前端静态资源，单端口访问
 docker compose up -d
 ```
 
-访问 http://localhost:3000。下载文件持久化在宿主机的 `./data` 目录。
+访问 http://localhost:45392。下载文件持久化在宿主机的 `./data` 目录。
 
 ## 静态站点部署（GitHub Pages / Netlify，仅前端 UI）
 
@@ -155,6 +156,7 @@ VITE_API_BASE=https://your-backend.example.com npm run build:client
 | --- | --- | --- |
 | GET | `/api/health` | 健康检查 |
 | GET | `/api/platforms` | 支持的平台列表 |
+| GET | `/api/thumbnail?url=` | 获取哔哩哔哩封面代理（仅限 hdslb CDN 图片） |
 | POST | `/api/resolve` | 解析视频元信息（`{ url }`） |
 | POST | `/api/tasks` | 创建下载任务（`{ url, formatId?, quality?, ext?, saveDir? }`） |
 | GET | `/api/tasks` | 任务列表（`?status=&search=&platform=&orderBy=&orderDir=`） |
@@ -189,16 +191,16 @@ VITE_API_BASE=https://your-backend.example.com npm run build:client
 # 启动后端（模拟模式，无需网络）
 SIMULATE=on DATA_DIR=./data-test node server/dist/index.js
 
-# API 冒烟测试（健康/解析/任务/历史/统计/设置/文件，20 项）
+# API 冒烟测试（健康、解析、音频任务、历史、统计、设置、文件）
 node scripts/smoke-test.mjs
 
-# 控制流测试（暂停/继续/取消/重试/删除，8 项）
+# 控制流测试（暂停/继续/取消/重试/删除）
 node scripts/control-test.mjs
 
 # 压力测试（20 个任务并发，验证并发限制与队列）
 node scripts/stress-test.mjs
 
-# 浏览器自动化测试（需 Playwright + Chromium，16 项）
+# 浏览器自动化测试（需 Playwright + Chromium）
 node scripts/browser-test.mjs
 ```
 
@@ -209,6 +211,15 @@ A：先看错误提示。常见原因：未安装 yt-dlp、网络不通、视频
 
 **Q：YouTube 提示「Sign in to confirm you're not a bot / 需要登录」？**
 A：这是 YouTube 的**人机验证**（反机器人检测），并非视频本身受限，多发生在数据中心 IP 或频繁下载时。解决方法：在「设置 → 网络设置 → Cookies 来源」中选择你本机**已登录 YouTube 的浏览器**（如 Chrome/Firefox），应用会读取你自己的浏览器登录状态来解析公开视频。也可用环境变量 `YTDLP_COOKIES_FROM_BROWSER=chrome` 指定。注意：该方式读取的是本机浏览器，Docker 容器内无浏览器、应保持关闭。
+
+**Q：为什么 YouTube 的“仅音频”下载会要求 ffmpeg？**
+A：部分视频不提供独立音频流。应用会下载可用的含音轨流，再提取为 M4A；请安装 ffmpeg。若视频本身提供独立音频流，则会直接下载所选音频格式。
+
+**Q：抖音“精选页”链接可以直接粘贴吗？**
+A：可以。形如 `https://www.douyin.com/jingxuan?modal_id=...` 的链接会自动转换为标准视频页再解析。抖音可能要求新鲜的浏览器 Cookies；如出现访问提示，请在设置中选择已登录抖音的浏览器。
+
+**Q：为什么某些低分辨率格式反而更大？**
+A：文件大小由源站提供的编码、码率、是否带水印等共同决定，并不只取决于分辨率。例如 H.265 的 720P 可能比高码率 H.264 的 576P 或带水印的 405P 更小；页面显示的是平台返回的预估值。
 
 **Q：如何安装 yt-dlp？**
 A：macOS `brew install yt-dlp`；Linux `pip install yt-dlp`（或 `pipx install yt-dlp`）。确保 `ffmpeg` 也已安装（合并音视频流需要）。

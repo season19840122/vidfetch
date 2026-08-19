@@ -1,6 +1,6 @@
 // 控制流测试：暂停/继续/取消/重试/删除，验证暂停时进度真正冻结。
 // 用法：node scripts/control-test.mjs [BASE_URL]
-const BASE = process.argv[2] || 'http://localhost:3000';
+const BASE = process.argv[2] || 'http://localhost:45392';
 
 let pass = 0;
 let fail = 0;

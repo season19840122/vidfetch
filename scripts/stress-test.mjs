@@ -1,6 +1,6 @@
 // 压力测试：同时加入 20 个任务，验证并发限制、队列与状态。
 // 用法：node scripts/stress-test.mjs [BASE_URL]
-const BASE = process.argv[2] || 'http://localhost:3000';
+const BASE = process.argv[2] || 'http://localhost:45392';
 const N = 20;
 
 async function api(method, path, body) {

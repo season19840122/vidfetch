@@ -10,6 +10,7 @@ export interface DownloadOptions {
   platform: PlatformId;
   taskId: string;
   title: string;
+  formatId: string;
   quality: string;
   ext: string;
   outputDir: string;
@@ -48,7 +49,7 @@ function spawnDownload(
   opts: DownloadOptions,
   onProgress: (p: DownloadProgress) => void,
 ): DownloadTask {
-  const selector = buildFormatSelector(opts.quality, opts.ext);
+  const selector = buildFormatSelector(opts.quality, opts.ext, opts.formatId);
   const timeoutSec = Math.max(10, Math.floor(opts.timeout / 1000) || 30);
   const template =
     `${PROGRESS_MARKER}%(progress._percent_str)s|%(progress._speed_str)s|` +
@@ -73,6 +74,14 @@ function spawnDownload(
     path.join(opts.outputDir, filenameBase(opts) + '.%(ext)s'),
     '--continue',
   ];
+  const needsAudioExtraction =
+    (opts.quality === 'audio' || opts.ext === 'm4a') &&
+    ['audio', 'bestaudio'].includes(opts.formatId.trim().toLowerCase());
+  // 当平台未提供独立音频流时，先下载含音轨的最佳可用流，再由 ffmpeg 提取 M4A。
+  // 这与解析页面展示的“仅音频 · M4A”承诺保持一致。
+  if (needsAudioExtraction) {
+    args.push('--extract-audio', '--audio-format', 'm4a');
+  }
   // 仅视频容器需要 ffmpeg 合并输出格式；纯音频(m4a)合并会报错
   if (opts.ext === 'mp4' || opts.ext === 'webm' || opts.ext === 'mkv') {
     args.push('--merge-output-format', opts.ext);

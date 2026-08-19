@@ -7,6 +7,7 @@ import StatusBadge from '@/components/StatusBadge.vue';
 import { api } from '@/api';
 import type { DashboardStats } from '@/types';
 import { formatBytes, formatDateTime } from '@/utils/format';
+import { thumbnailSrc } from '@/utils/thumbnail';
 
 const stats = ref<DashboardStats | null>(null);
 let timer: ReturnType<typeof setInterval> | null = null;
@@ -154,7 +155,7 @@ const todayCards = computed(() => {
         <div v-if="stats?.recentTasks.length" class="space-y-3">
           <div v-for="t in stats.recentTasks.slice(0, 6)" :key="t.id" class="flex items-center gap-3">
             <div class="h-9 w-14 shrink-0 overflow-hidden rounded-md bg-slate-100 dark:bg-slate-800">
-              <img v-if="t.thumbnail" :src="t.thumbnail" class="h-full w-full object-cover" @error="($event.target as HTMLImageElement).style.display='none'" />
+              <img v-if="t.thumbnail" :src="thumbnailSrc(t.thumbnail, t.platform)" class="h-full w-full object-cover" @error="($event.target as HTMLImageElement).style.display='none'" />
             </div>
             <div class="min-w-0 flex-1">
               <p class="truncate text-xs font-medium text-slate-700 dark:text-slate-200">{{ t.title || '未命名' }}</p>

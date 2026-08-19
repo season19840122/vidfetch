@@ -51,6 +51,12 @@ export function initDb(): DatabaseSync {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    -- 旧版任务会保存 yt-dlp 返回的 http 哔哩哔哩封面地址；升级为 HTTPS，
+    -- 避免在 HTTPS 页面中被浏览器按混合内容拦截。
+    UPDATE tasks
+    SET thumbnail = REPLACE(thumbnail, 'http://', 'https://')
+    WHERE platform = 'bilibili' AND thumbnail LIKE 'http://i%.hdslb.com/%';
   `);
 
   db = database;

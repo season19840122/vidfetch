@@ -52,6 +52,7 @@ export const PLATFORM_META: Record<PlatformId, PlatformStyle> = {
   vimeo: { name: 'Vimeo', color: '#1AB7EA' },
   x: { name: 'X', color: '#0f0f0f' },
   tiktok: { name: 'TikTok', color: '#010101' },
+  douyin: { name: '抖音', color: '#161823' },
   instagram: { name: 'Instagram', color: '#E1306C' },
   other: { name: '其他网站', color: '#6366f1' },
 };
