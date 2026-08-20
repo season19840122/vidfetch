@@ -58,7 +58,7 @@
 │       └── types.ts            # 共享类型
 ├── Dockerfile
 ├── docker-compose.yml
-├── railway.toml                # Railway 配置即代码
+├── railway.json                # Railway 配置即代码
 └── package.json                # npm workspaces
 ```
 
@@ -131,7 +131,7 @@ docker compose up -d
 
 ## Railway 部署（后端）
 
-仓库根目录的 `railway.toml` 已将构建方式、健康检查与重启策略纳入版本控制。Railway 每次从 GitHub 拉取代码时都会使用该配置，因此不需要重复填写构建命令或启动命令。
+仓库根目录的 `railway.json` 已将构建方式、健康检查与重启策略纳入版本控制，并会显式清空旧的面板构建命令。Railway 每次从 GitHub 拉取代码时都会使用该配置，因此不需要重复填写构建命令或启动命令。
 
 1. 在 Railway 中新建 **一个** GitHub 服务，选择本仓库的 `main` 分支；服务根目录保持为仓库根目录，不要分别部署 `server` 与 `client`。
 2. Railway 会使用根目录 `Dockerfile` 构建镜像，并通过 `/api/health` 进行健康检查。
