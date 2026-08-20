@@ -35,6 +35,7 @@ export interface Config {
   retries: number;
   cookiesFromBrowser: string;
   cookiesFile: string;
+  cookieAdminToken: string;
   ytdlpPath: string | null;
   simulate: 'auto' | 'on' | 'off';
   version: string;
@@ -49,7 +50,10 @@ function resolveCookiesFile(dataDir: string): string {
   if (explicit) return resolvePath(explicit);
 
   const encoded = str(process.env.YTDLP_COOKIES_BASE64, '').replace(/\s/g, '');
-  if (!encoded) return '';
+  if (!encoded) {
+    const managedFile = path.join(dataDir, 'youtube-cookies.txt');
+    return fs.existsSync(managedFile) ? managedFile : '';
+  }
 
   // Base64 非法时 Buffer.from 也可能静默解码，因此先做格式校验。
   if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
@@ -133,6 +137,7 @@ export function loadConfig(): Config {
     retries: int(process.env.RETRY_COUNT, 3),
     cookiesFromBrowser: str(process.env.YTDLP_COOKIES_FROM_BROWSER, ''),
     cookiesFile: resolveCookiesFile(DATA_DIR),
+    cookieAdminToken: str(process.env.COOKIE_ADMIN_TOKEN, '').trim(),
     ytdlpPath: findYtDlp(),
     simulate,
     version,

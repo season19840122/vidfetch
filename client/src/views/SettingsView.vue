@@ -10,6 +10,11 @@ import { formatBytes } from '@/utils/format';
 const settingsStore = useSettingsStore();
 const toastStore = useToastStore();
 const selectingDefaultDirectory = ref(false);
+const cookieImportStatus = ref({ enabled: false, configured: false });
+const cookieAdminToken = ref('');
+const cookieText = ref('');
+const importingCookies = ref(false);
+const removingCookies = ref(false);
 
 const form = reactive({
   defaultQuality: '1080p',
@@ -57,6 +62,11 @@ onMounted(async () => {
   if (!settingsStore.settings) await settingsStore.load();
   if (settingsStore.settings) applyToForm(settingsStore.settings);
   await settingsStore.loadSystem();
+  try {
+    cookieImportStatus.value = await api.cookieImportStatus();
+  } catch {
+    // 兼容未升级的后端：不显示导入入口。
+  }
 });
 
 function selectTheme(theme: AppSettings['appearance.theme']) {
@@ -106,6 +116,46 @@ async function reset() {
     toastStore.success('已恢复默认设置');
   } catch (e) {
     toastStore.error(e instanceof Error ? e.message : '重置失败');
+  }
+}
+
+async function importCookies() {
+  if (!cookieAdminToken.value.trim()) {
+    toastStore.error('请输入部署时设置的 Cookie 管理员口令');
+    return;
+  }
+  if (!cookieText.value.trim()) {
+    toastStore.error('请粘贴 cookies.txt 的完整内容');
+    return;
+  }
+  importingCookies.value = true;
+  try {
+    await api.importCookies(cookieAdminToken.value, cookieText.value);
+    cookieText.value = '';
+    cookieImportStatus.value.configured = true;
+    toastStore.success('Cookie 已保存，将用于后续 YouTube 解析和下载');
+  } catch (e) {
+    toastStore.error(e instanceof Error ? e.message : 'Cookie 导入失败');
+  } finally {
+    importingCookies.value = false;
+  }
+}
+
+async function removeCookies() {
+  if (!cookieAdminToken.value.trim()) {
+    toastStore.error('请输入 Cookie 管理员口令后再删除');
+    return;
+  }
+  if (!window.confirm('确定删除服务器中保存的 Cookie 吗？后续 YouTube 下载可能再次触发验证。')) return;
+  removingCookies.value = true;
+  try {
+    await api.removeCookies(cookieAdminToken.value);
+    cookieImportStatus.value.configured = false;
+    toastStore.success('服务器 Cookie 已删除');
+  } catch (e) {
+    toastStore.error(e instanceof Error ? e.message : '删除 Cookie 失败');
+  } finally {
+    removingCookies.value = false;
   }
 }
 
@@ -209,8 +259,58 @@ const diskUsedPercent = () => {
             <option v-for="c in cookiesOptions" :key="c.value" :value="c.value">{{ c.label }}</option>
           </select>
           <p class="mt-1.5 text-xs text-slate-400">
-            当 YouTube 提示「Sign in to confirm you're not a bot」或需要登录时，可选择本机已登录的浏览器，使用你自己的登录状态来解析公开视频。
+            仅适用于后端运行在当前电脑的场景。Railway / Docker 云端部署请保持关闭，并使用下方受管理员口令保护的 Cookie 导入功能。
           </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 仅在部署者配置管理员口令后显示；不面向共享服务的普通访客。 -->
+    <div v-if="cookieImportStatus.enabled" class="card mt-4 border-amber-200 p-5 dark:border-amber-900/70">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-200">YouTube Cookie（自托管管理员）</h3>
+          <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+            仅限此实例的部署者使用。Cookie 会保存到服务器数据卷，不会传给前端其他访客，也不会提交到 Git。
+          </p>
+        </div>
+        <span
+          class="rounded-full px-2.5 py-1 text-xs font-medium"
+          :class="cookieImportStatus.configured ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'"
+        >
+          {{ cookieImportStatus.configured ? '已配置' : '未配置' }}
+        </span>
+      </div>
+      <div class="mt-4 grid gap-3">
+        <input
+          v-model="cookieAdminToken"
+          type="password"
+          class="input"
+          autocomplete="off"
+          placeholder="Cookie 管理员口令（COOKIE_ADMIN_TOKEN）"
+        />
+        <textarea
+          v-model="cookieText"
+          class="input min-h-36 resize-y font-mono text-xs leading-5"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="# Netscape HTTP Cookie File&#10;粘贴导出的 cookies.txt 完整内容"
+        />
+        <div class="flex flex-wrap items-center gap-2">
+          <button class="btn-primary" :disabled="importingCookies" @click="importCookies">
+            <Icon v-if="importingCookies" name="spinner" :size="15" class="animate-spin" />
+            {{ importingCookies ? '保存中…' : '安全保存 Cookie' }}
+          </button>
+          <button
+            v-if="cookieImportStatus.configured"
+            class="btn-secondary text-rose-600 dark:text-rose-300"
+            :disabled="removingCookies"
+            @click="removeCookies"
+          >
+            {{ removingCookies ? '删除中…' : '删除服务器 Cookie' }}
+          </button>
+          <span class="text-xs text-amber-600 dark:text-amber-400">请使用专用账号，且不要把 Cookie 发给他人。</span>
         </div>
       </div>
     </div>

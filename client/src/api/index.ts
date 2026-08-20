@@ -110,6 +110,9 @@ export const api = {
   settings: () => request<AppSettings>('GET', '/settings'),
   updateSettings: (patch: Partial<AppSettings>) => request<AppSettings>('PUT', '/settings', patch),
   resetSettings: () => request<AppSettings>('POST', '/settings/reset'),
+  cookieImportStatus: () => request<{ enabled: boolean; configured: boolean }>('GET', '/admin/cookies/status'),
+  importCookies: (token: string, cookies: string) => request<{ ok: boolean }>('PUT', '/admin/cookies', { token, cookies }),
+  removeCookies: (token: string) => request<{ ok: boolean }>('DELETE', '/admin/cookies', { token }),
   system: () => request<SystemInfo>('GET', '/system'),
   selectDirectory: () => request<{ cancelled: boolean; dir: string }>('POST', '/system/select-directory'),
 };

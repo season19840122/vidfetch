@@ -146,6 +146,7 @@ docker compose up -d
 | `SIMULATE` | `off` | 强制使用镜像内的 yt-dlp，不降级为模拟下载 |
 | `MAX_CONCURRENT` | `1` | 初次上线时限制并发，降低资源占用 |
 | `YTDLP_COOKIES_BASE64` | 可选 | YouTube 触发人机验证时使用的 Netscape 格式 `cookies.txt` 的单行 Base64 |
+| `COOKIE_ADMIN_TOKEN` | 可选 | 启用设置页 Cookie 导入区的管理员口令 |
 
 > 不要把 Cookies、密钥或任何登录凭据提交到 Git。此类敏感配置仅应放在 Railway Variables。云端容器不能读取本机浏览器的 Cookies，`YTDLP_COOKIES_FROM_BROWSER` 应保持为空。
 
@@ -160,6 +161,8 @@ base64 < cookies.txt | tr -d '\n'
 将输出内容完整粘贴为 Railway 的私密变量 `YTDLP_COOKIES_BASE64`，再重新部署。服务启动时会把它写入挂载的 `/data` 目录，权限为仅服务进程可读，并以 `--cookies` 传给 yt-dlp；该文件不会通过 API 返回，也不会提交到 Git。
 
 Cookie 可能会失效，且高频下载有账号被限制的风险；请降低并发和下载频率。若仍被拦截，说明当前出口 IP 已被限制，应更换出口 IP，而不是反复请求。
+
+如果不想手工转换 Base64，可在 Railway Variables 设置一个高强度 `COOKIE_ADMIN_TOKEN`，重新部署后，在「设置 → YouTube Cookie（自托管管理员）」输入该口令并粘贴 `cookies.txt` 原文即可。该入口默认关闭；它只允许知道管理员口令的部署者保存或删除本实例的 Cookie。不要在共享的公开站点向普通访客索取 Cookie。
 
 > **开源与自托管说明**：本仓库不会包含任何真实 Cookie，也不提供将终端用户 Cookie 上传到共享服务的网页表单。每位部署者仅应在自己的 Railway / 服务器私密变量中配置自己的 Cookie；没有配置时，应用仍会尝试下载无需验证的公开视频。
 

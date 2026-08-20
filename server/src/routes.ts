@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { deleteTaskRow, getTask, listTasks, updateTask } from './db';
 import { AppError, ErrorCodes } from './errors';
+import { config } from './config';
 import { subscribe } from './events';
 import { PLATFORMS, validateUrl } from './platform';
 import { queue } from './queue';
@@ -15,6 +17,38 @@ import type { PlatformId, Task } from './types';
 function asPlatform(s: unknown): PlatformId | undefined {
   const ids = PLATFORMS.map((p) => p.id);
   return typeof s === 'string' && ids.includes(s as PlatformId) ? (s as PlatformId) : undefined;
+}
+
+const MANAGED_COOKIES_FILE = path.join(config.dataDir, 'youtube-cookies.txt');
+
+function verifyCookieAdminToken(token: unknown): void {
+  const expected = config.cookieAdminToken;
+  if (!expected) {
+    throw new AppError(ErrorCodes.NOT_FOUND, '此实例未启用网页 Cookie 导入', 404);
+  }
+  const received = typeof token === 'string' ? token : '';
+  const expectedBytes = Buffer.from(expected);
+  const receivedBytes = Buffer.from(received);
+  if (
+    expectedBytes.length !== receivedBytes.length ||
+    !timingSafeEqual(expectedBytes, receivedBytes)
+  ) {
+    throw new AppError(ErrorCodes.FORBIDDEN, '管理员口令错误', 403);
+  }
+}
+
+function validateCookiesText(cookies: unknown): string {
+  if (typeof cookies !== 'string' || !cookies.trim()) {
+    throw new AppError(ErrorCodes.INVALID_URL, '请粘贴 cookies.txt 的完整内容', 400);
+  }
+  const content = cookies.replace(/\r\n/g, '\n').trimStart();
+  if (!content.startsWith('# HTTP Cookie File') && !content.startsWith('# Netscape HTTP Cookie File')) {
+    throw new AppError(ErrorCodes.INVALID_URL, '仅支持 Netscape 格式的 cookies.txt 文件', 400);
+  }
+  if (Buffer.byteLength(content, 'utf8') > 512 * 1024) {
+    throw new AppError(ErrorCodes.INVALID_URL, 'Cookie 文件过大', 400);
+  }
+  return content.endsWith('\n') ? content : `${content}\n`;
 }
 
 /**
@@ -292,6 +326,42 @@ export function registerRoutes(app: FastifyInstance): void {
   });
 
   app.post('/api/settings/reset', async () => resetSettings());
+
+  /* ---------------- 管理员 Cookie 导入（仅自托管实例） ---------------- */
+
+  app.get('/api/admin/cookies/status', async () => {
+    if (!config.cookieAdminToken) return { enabled: false, configured: false };
+    return { enabled: true, configured: fs.existsSync(MANAGED_COOKIES_FILE) };
+  });
+
+  app.put<{ Body: { token?: string; cookies?: string } }>('/api/admin/cookies', async (req) => {
+    verifyCookieAdminToken(req.body?.token);
+    if (process.env.YTDLP_COOKIES_BASE64?.trim() || process.env.YTDLP_COOKIES_FILE?.trim()) {
+      throw new AppError(
+        ErrorCodes.INVALID_STATE,
+        '此实例已由环境变量管理 Cookie，请先移除 YTDLP_COOKIES_BASE64 / YTDLP_COOKIES_FILE 后再使用网页导入',
+        409,
+      );
+    }
+    const content = validateCookiesText(req.body?.cookies);
+    fs.mkdirSync(config.dataDir, { recursive: true });
+    fs.writeFileSync(MANAGED_COOKIES_FILE, content, { encoding: 'utf8', mode: 0o600 });
+    fs.chmodSync(MANAGED_COOKIES_FILE, 0o600);
+    return { ok: true };
+  });
+
+  app.delete<{ Body: { token?: string } }>('/api/admin/cookies', async (req) => {
+    verifyCookieAdminToken(req.body?.token);
+    if (process.env.YTDLP_COOKIES_BASE64?.trim() || process.env.YTDLP_COOKIES_FILE?.trim()) {
+      throw new AppError(ErrorCodes.INVALID_STATE, '此实例的 Cookie 由环境变量管理，无法在网页中删除', 409);
+    }
+    try {
+      fs.unlinkSync(MANAGED_COOKIES_FILE);
+    } catch (err: unknown) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+    }
+    return { ok: true };
+  });
 
   app.get('/api/system', async () => getSystemInfo());
 

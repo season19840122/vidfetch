@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 import { config } from './config';
 import { AppError, ErrorCodes } from './errors';
 
@@ -25,6 +27,9 @@ export function cookiesArgs(browser: string | undefined | null): string[] {
  */
 export function authenticationArgs(browser: string | undefined | null): string[] {
   if (config.cookiesFile) return ['--cookies', config.cookiesFile];
+  // 管理员在运行期间导入 Cookie 后，无需重启即可用于下一次解析/下载。
+  const managedFile = path.join(config.dataDir, 'youtube-cookies.txt');
+  if (fs.existsSync(managedFile)) return ['--cookies', managedFile];
   return cookiesArgs(browser);
 }
 
