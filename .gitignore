@@ -19,6 +19,11 @@ data/
 .env.local
 .env.*.local
 
+# Browser session credentials — never commit exported cookies
+cookies.txt
+*.cookies.txt
+*.cookies
+
 # Logs
 *.log
 npm-debug.log*

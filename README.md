@@ -161,6 +161,8 @@ base64 < cookies.txt | tr -d '\n'
 
 Cookie 可能会失效，且高频下载有账号被限制的风险；请降低并发和下载频率。若仍被拦截，说明当前出口 IP 已被限制，应更换出口 IP，而不是反复请求。
 
+> **开源与自托管说明**：本仓库不会包含任何真实 Cookie，也不提供将终端用户 Cookie 上传到共享服务的网页表单。每位部署者仅应在自己的 Railway / 服务器私密变量中配置自己的 Cookie；没有配置时，应用仍会尝试下载无需验证的公开视频。
+
 ## 静态站点部署（GitHub Pages / Netlify，仅前端 UI）
 
 > **重要说明**：本章只发布**前端 UI**。vidfetch 的下载后端（Fastify + SQLite + yt-dlp + ffmpeg）需要 Node ≥ 22 与常驻进程，无法在 GitHub Pages / Netlify 静态托管上运行。静态站点在前端会提示「无法连接到服务器」；接入后端后功能即可用（见下文）。
