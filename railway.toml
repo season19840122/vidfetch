@@ -4,7 +4,7 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
-watchPatterns = ["/Dockerfile", "/package.json", "/package-lock.json", "/server/**", "/client/**"]
+watchPatterns = ["/Dockerfile", "/railway.toml", "/package.json", "/package-lock.json", "/server/**", "/client/**"]
 
 [deploy]
 healthcheckPath = "/api/health"
