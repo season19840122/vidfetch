@@ -166,7 +166,7 @@ VITE_API_BASE=https://your-backend.example.com npm run build:client
 ```
 
 - **GitHub Pages**：在仓库 Settings → Secrets and variables → Actions → **Variables** 新建 `VITE_API_BASE` 后重新构建。
-- **Netlify**：在 `netlify.toml` 的 `[build.environment]` 中取消注释 `VITE_API_BASE` 并填写地址。
+- **Netlify**：`netlify.toml` 已配置当前 Railway 后端地址；如更换 Railway 域名，更新其中的 `VITE_API_BASE` 后重新部署。
 
 ## API 文档
 

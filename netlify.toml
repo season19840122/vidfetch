@@ -8,8 +8,8 @@
 
 [build.environment]
   NODE_VERSION = "22"
-  # 接入后端时取消注释并填写你的后端地址
-  # VITE_API_BASE = "https://your-backend.example.com"
+  # Railway 后端公网地址（公开配置，不含敏感信息）
+  VITE_API_BASE = "https://server-production-e24b1.up.railway.app"
 
 # SPA 路由回退：所有路径都返回 index.html（前端使用 history 路由）
 [[redirects]]
