@@ -58,6 +58,7 @@
 │       └── types.ts            # 共享类型
 ├── Dockerfile
 ├── docker-compose.yml
+├── railway.toml                # Railway 配置即代码
 └── package.json                # npm workspaces
 ```
 
@@ -127,6 +128,25 @@ docker compose up -d
 ```
 
 访问 http://localhost:45392。下载文件持久化在宿主机的 `./data` 目录。
+
+## Railway 部署（后端）
+
+仓库根目录的 `railway.toml` 已将构建方式、健康检查与重启策略纳入版本控制。Railway 每次从 GitHub 拉取代码时都会使用该配置，因此不需要重复填写构建命令或启动命令。
+
+1. 在 Railway 中新建 **一个** GitHub 服务，选择本仓库的 `main` 分支；服务根目录保持为仓库根目录，不要分别部署 `server` 与 `client`。
+2. Railway 会使用根目录 `Dockerfile` 构建镜像，并通过 `/api/health` 进行健康检查。
+3. 为该服务一次性添加 Volume，挂载路径填写 `/data`。下载历史、SQLite 数据库与下载文件会保存在此处。
+4. 在 Networking 中生成服务域名。
+5. 在 Netlify 的环境变量中设置 `VITE_API_BASE=https://<你的-railway-域名>`，然后重新部署前端。
+
+`Dockerfile` 已提供 `DATA_DIR=/data`、`NODE_ENV=production`、`HOST=0.0.0.0` 等生产默认值；Railway 会自动注入 `PORT`，无需手动设置。可按需在 Railway Variables 中额外设置：
+
+| 变量 | 推荐值 | 用途 |
+| --- | --- | --- |
+| `SIMULATE` | `off` | 强制使用镜像内的 yt-dlp，不降级为模拟下载 |
+| `MAX_CONCURRENT` | `1` | 初次上线时限制并发，降低资源占用 |
+
+> 不要把 Cookies、密钥或任何登录凭据提交到 Git。此类敏感配置仅应放在 Railway Variables。云端容器不能读取本机浏览器的 Cookies，`YTDLP_COOKIES_FROM_BROWSER` 应保持为空。
 
 ## 静态站点部署（GitHub Pages / Netlify，仅前端 UI）
 
