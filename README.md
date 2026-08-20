@@ -145,8 +145,21 @@ docker compose up -d
 | --- | --- | --- |
 | `SIMULATE` | `off` | 强制使用镜像内的 yt-dlp，不降级为模拟下载 |
 | `MAX_CONCURRENT` | `1` | 初次上线时限制并发，降低资源占用 |
+| `YTDLP_COOKIES_BASE64` | 可选 | YouTube 触发人机验证时使用的 Netscape 格式 `cookies.txt` 的单行 Base64 |
 
 > 不要把 Cookies、密钥或任何登录凭据提交到 Git。此类敏感配置仅应放在 Railway Variables。云端容器不能读取本机浏览器的 Cookies，`YTDLP_COOKIES_FROM_BROWSER` 应保持为空。
+
+### Railway 中处理 YouTube 人机验证（可选）
+
+当 Railway 的共享数据中心 IP 被 YouTube 要求人机验证时，浏览器来源设置无法生效。可使用**专门用于下载的 YouTube 账号**在自己的浏览器中导出 Netscape 格式的 `cookies.txt`，然后在本机执行：
+
+```bash
+base64 < cookies.txt | tr -d '\n'
+```
+
+将输出内容完整粘贴为 Railway 的私密变量 `YTDLP_COOKIES_BASE64`，再重新部署。服务启动时会把它写入挂载的 `/data` 目录，权限为仅服务进程可读，并以 `--cookies` 传给 yt-dlp；该文件不会通过 API 返回，也不会提交到 Git。
+
+Cookie 可能会失效，且高频下载有账号被限制的风险；请降低并发和下载频率。若仍被拦截，说明当前出口 IP 已被限制，应更换出口 IP，而不是反复请求。
 
 ## 静态站点部署（GitHub Pages / Netlify，仅前端 UI）
 
@@ -230,7 +243,7 @@ node scripts/browser-test.mjs
 A：先看错误提示。常见原因：未安装 yt-dlp、网络不通、视频需要登录、视频受 DRM 保护、链接格式错误。应用会给出对应的中文原因。
 
 **Q：YouTube 提示「Sign in to confirm you're not a bot / 需要登录」？**
-A：这是 YouTube 的**人机验证**（反机器人检测），并非视频本身受限，多发生在数据中心 IP 或频繁下载时。解决方法：在「设置 → 网络设置 → Cookies 来源」中选择你本机**已登录 YouTube 的浏览器**（如 Chrome/Firefox），应用会读取你自己的浏览器登录状态来解析公开视频。也可用环境变量 `YTDLP_COOKIES_FROM_BROWSER=chrome` 指定。注意：该方式读取的是本机浏览器，Docker 容器内无浏览器、应保持关闭。
+A：这是 YouTube 的**人机验证**（反机器人检测），并非视频本身受限，多发生在数据中心 IP 或频繁下载时。本机运行应用时，可在「设置 → 网络设置 → Cookies 来源」选择已登录的浏览器。Railway / Docker 等云端环境不能读取你电脑浏览器，应保持该选项关闭，并改用 Railway 私密变量 `YTDLP_COOKIES_BASE64`（见上文）。若仍失败，当前服务器出口 IP 可能已被限制。
 
 **Q：为什么 YouTube 的“仅音频”下载会要求 ffmpeg？**
 A：部分视频不提供独立音频流。应用会下载可用的含音轨流，再提取为 M4A；请安装 ffmpeg。若视频本身提供独立音频流，则会直接下载所选音频格式。

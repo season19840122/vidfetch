@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { AppError } from './errors';
-import { buildFormatSelector, cookiesArgs, hashString, mapYtDlpError, ytdlpBinary } from './ytdlp';
+import { authenticationArgs, buildFormatSelector, hashString, mapYtDlpError, ytdlpBinary } from './ytdlp';
 import type { DownloadProgress, DownloadResult, PlatformId } from './types';
 
 export interface DownloadOptions {
@@ -86,8 +86,8 @@ function spawnDownload(
   if (opts.ext === 'mp4' || opts.ext === 'webm' || opts.ext === 'mkv') {
     args.push('--merge-output-format', opts.ext);
   }
-  // 本机浏览器 cookies（解决 YouTube 人机验证）
-  args.push(...cookiesArgs(opts.cookiesBrowser));
+  // 云端私密 cookies.txt 优先；本地环境才读取本机浏览器 cookies。
+  args.push(...authenticationArgs(opts.cookiesBrowser));
   if (opts.maxSpeed > 0) {
     args.push('--limit-rate', `${Math.max(1, Math.round(opts.maxSpeed / 1024))}K`);
   }

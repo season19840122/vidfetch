@@ -20,6 +20,14 @@ export function cookiesArgs(browser: string | undefined | null): string[] {
   return ['--cookies-from-browser', b];
 }
 
+/**
+ * 云端优先使用由私密环境变量生成的 cookies.txt；否则才读取本机浏览器。
+ */
+export function authenticationArgs(browser: string | undefined | null): string[] {
+  if (config.cookiesFile) return ['--cookies', config.cookiesFile];
+  return cookiesArgs(browser);
+}
+
 /** 运行 yt-dlp，带整体超时。 */
 export function runYtDlp(args: string[], timeoutMs: number): Promise<YtDlpResult> {
   return new Promise((resolve, reject) => {
@@ -98,12 +106,11 @@ export function mapYtDlpError(stderr: string, platform: string): AppError {
   if (/private video|is private/.test(s)) {
     return new AppError(ErrorCodes.VIDEO_UNAVAILABLE, '该视频为私密视频，无法下载', 422);
   }
-  // YouTube 的人机验证（"Sign in to confirm you're not a bot"）——这是反机器人检测，
-  // 并非内容访问限制。可通过读取本机浏览器登录状态（cookies）解决。
+  // YouTube 的人机验证（"Sign in to confirm you're not a bot"）多发生在数据中心 IP。
   if (/sign in to confirm you.{0,40}not a bot|captcha/.test(s)) {
     return new AppError(
       ErrorCodes.BOT_VERIFICATION,
-      'YouTube 触发了人机验证：请在「设置 → 网络设置」中配置 Cookies 来源（读取你本机浏览器的登录状态）后重试',
+      'YouTube 对当前服务器 IP 触发了人机验证。云端部署请配置服务器 Cookies 文件或更换出口 IP；不要在云端选择本机浏览器 Cookies 来源',
       422,
     );
   }

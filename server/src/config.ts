@@ -34,9 +34,37 @@ export interface Config {
   timeout: number;
   retries: number;
   cookiesFromBrowser: string;
+  cookiesFile: string;
   ytdlpPath: string | null;
   simulate: 'auto' | 'on' | 'off';
   version: string;
+}
+
+/**
+ * 将 Railway 的私密 Base64 变量写入数据卷，供 yt-dlp 读取。
+ * 不记录 Cookie 内容，也不将其暴露到 API 或前端。
+ */
+function resolveCookiesFile(dataDir: string): string {
+  const explicit = str(process.env.YTDLP_COOKIES_FILE, '').trim();
+  if (explicit) return resolvePath(explicit);
+
+  const encoded = str(process.env.YTDLP_COOKIES_BASE64, '').replace(/\s/g, '');
+  if (!encoded) return '';
+
+  // Base64 非法时 Buffer.from 也可能静默解码，因此先做格式校验。
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+    throw new Error('YTDLP_COOKIES_BASE64 不是有效的 Base64 内容');
+  }
+  const content = Buffer.from(encoded, 'base64').toString('utf8');
+  if (!content.startsWith('# HTTP Cookie File') && !content.startsWith('# Netscape HTTP Cookie File')) {
+    throw new Error('YTDLP_COOKIES_BASE64 必须是 Netscape cookies.txt 格式');
+  }
+
+  fs.mkdirSync(dataDir, { recursive: true });
+  const target = path.join(dataDir, 'youtube-cookies.txt');
+  fs.writeFileSync(target, content, { encoding: 'utf8', mode: 0o600 });
+  fs.chmodSync(target, 0o600);
+  return target;
 }
 
 function findYtDlp(): string | null {
@@ -104,6 +132,7 @@ export function loadConfig(): Config {
     timeout: int(process.env.TIMEOUT, 60000),
     retries: int(process.env.RETRY_COUNT, 3),
     cookiesFromBrowser: str(process.env.YTDLP_COOKIES_FROM_BROWSER, ''),
+    cookiesFile: resolveCookiesFile(DATA_DIR),
     ytdlpPath: findYtDlp(),
     simulate,
     version,

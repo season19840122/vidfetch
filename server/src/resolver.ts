@@ -3,7 +3,7 @@ import { AppError, ErrorCodes } from './errors';
 import { getSettings, shouldSimulate } from './settings';
 import type { FormatInfo, PlatformId, VideoInfo } from './types';
 import { getPlatformMeta } from './platform';
-import { cookiesArgs, hashString, mapYtDlpError, runYtDlp } from './ytdlp';
+import { authenticationArgs, hashString, mapYtDlpError, runYtDlp } from './ytdlp';
 
 const cache = new Map<string, { at: number; info: VideoInfo }>();
 const CACHE_TTL = 10 * 60 * 1000;
@@ -32,7 +32,7 @@ export async function resolveVideo(url: string, platform: PlatformId): Promise<V
 
 async function ytdlpResolve(url: string, platform: PlatformId): Promise<VideoInfo> {
   const timeoutSec = Math.max(10, Math.floor(config.timeout / 1000) || 30);
-  const cookies = cookiesArgs(getSettings()['network.cookiesFromBrowser']);
+  const cookies = authenticationArgs(getSettings()['network.cookiesFromBrowser']);
   const { stdout, stderr, code } = await runYtDlp(
     [
       '--dump-single-json',
