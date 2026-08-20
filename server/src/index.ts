@@ -50,6 +50,7 @@ async function main(): Promise<void> {
   app.log.info(
     `在线视频下载管理器已启动: http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${config.port}`,
   );
+  app.log.info(`运行版本: ${config.version}`);
   app.log.info(`下载目录: ${config.downloadDir}  数据库: ${config.dbPath}`);
 }
 
