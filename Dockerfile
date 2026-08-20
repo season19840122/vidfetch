@@ -33,7 +33,6 @@ RUN npm install --omit=dev --no-audit --no-fund
 COPY --from=build /app/server/dist ./server/dist
 COPY --from=build /app/client/dist ./client/dist
 
-VOLUME ["/data"]
 EXPOSE 45392
 
 CMD ["node", "server/dist/index.js"]
